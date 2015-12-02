@@ -24,42 +24,11 @@ with open('token', 'rb') as token_file:
 def secInit():
     c = conn.cursor()
     
-    c.execute('''create table if not exists exampleTable (date text, event text, name text, UNIQUE(event, name) ON CONFLICT REPLACE)''')
+    c.execute('create table if not exists eventTable(date text, event text, name text, UNIQUE(event, name) ON CONFLICT REPLACE)')
 
     conn.commit()
 
     c.close()
-
-def addTo(event, name):
-    c = conn.cursor()
-
-    date = datetime.now().strftime("%d-%m-%y")
-    c.execute('''insert into exampleTable values(?, ?, ?)''', (date, event.replace(" ",""), name.replace(" ", "")))
-
-    conn.commit()
-
-    c.close()
-
-def findByEvent(event):
-    c = conn.cursor()
-
-    result = c.execute('select * from exampleTable where event=?', (event.replace(" ",""),)).fetchall()
-
-    return result
-
-def removeFromEvent(event, name):
-    return False
-
-def emptyEvent(event, name):
-    # Debe de estar en el evento ! !
-    return True
-
-def listEvents():
-    c = conn.cursor()
-
-    h = c.execute('select distinct event from exampleTable')
-
-    return h
 
 def main():
 
@@ -88,7 +57,7 @@ def main():
         else:
             break
 
-    #print("Discarded {} old updates".format(num_discarded))
+    print("Discarded {} old updates".format(num_discarded))
 
     # Main loop
     print('Working...')
@@ -108,30 +77,29 @@ def main():
 
         for update in updates:
             message = update.message
-            text = message.text
+            actText = message.text
+            actType = message.chat.type
             chat_id = message.chat.id
             update_id = update.update_id
 
             send_text = None
 
-            if message.chat.type == "private":
-                if text == '/who':
-                    who = getWho()
+            if checkTypeAndTextStart(aText= actText, cText='/who', aType=actType, cType='private'):
+                who = getWho()
 
-                    if len(who) == 0:
-                        send_text = u"Parece que no hay nadie... {}".format(telegram.Emoji.DISAPPOINTED_FACE.decode('utf-8'))
-                    else:
-                        who_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w) for w in who]
-                        send_text = u"Miembros en SUGUS:\n{}".format('\n'.join(who_bonito))
-                if text.startswith('/join'):
-                    rtext = text.replace('/join','').replace(' ','')
-                    if not rtext:
-                        send_text = u"Dime el evento"
-                    else:
-                        addTo(rtext, message.from_user.username)
+                if len(who) == 0:
+                    send_text = u"Parece que no hay nadie... {}".format(telegram.Emoji.DISAPPOINTED_FACE.decode('utf-8'))
+                else:
+                    send_text = show(u"Miembros en SUGUS:", who, [0])
+            if checkTypeAndTextStart(aText= actText, cText='/join', aType=actType, cType='private'):
+                rtext = actText.replace('/join','').replace(' ','')
+                if not rtext:
+                    send_text = u"Dime el evento"
+                else:
+                    addTo(rtext, message.from_user.username)
 
-            if text.startswith('/participants'):
-                rtext = text.replace('/participants','').replace(' ','')
+            if checkTypeAndTextStart(aText= actText, cText='/participants', aType=actType, cType='private'):
+                rtext = actText.replace('/participants','').replace(' ','')
                 if not rtext:
                     events = listEvents()
                     events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
@@ -139,18 +107,51 @@ def main():
                 else:
                     event = rtext
                     participants = findByEvent(event)
-                    print(participants.rowcount)
-                    if False:
+                    if len(participants) == 0:
                         send_text = u"No hay nadie en {}".format(event)
                     else:
-                        part_bonito = [u"{}{} - ({})".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[2], w[0]) for w in participants]
-                        send_text = u"Participantes en {}:\n{}".format(event, '\n'.join(part_bonito))
+                        send_text = show(u"Participantes en {}:".format(event), participants, [2, 0])
+
+            if checkTypeAndTextStart(aText= actText, cText='/disjoin', aType=actType, cType='private'):
+                rtext = actText.replace('/disjoin','').replace(' ','')
+                send_text = removeFromEvent(rtext, message.from_user.username)
+
+            if checkTypeAndTextStart(aText= actText, cText='/empty', aType=actType, cType='private'):
+                rtext = actText.replace('/empty').replace(' ','')
+                send_text = emptyEvent(rtext, message.from_user.username)
 
             if send_text != None:
                 bot.sendMessage(chat_id=chat_id, text=send_text)
                 print(u"Mensaje enviado a {}/{} ({})".format(message.from_user.username, message.from_user.first_name, str(message.chat.id)))
 
             LAST_UPDATE_ID = update_id + 1
+
+
+def checkTypeAndTextStart(aText = None, aUName = None, cText = None, aType = None, cType = None, cUName = None):
+
+    result = True
+
+    if cType != None:
+        result = result and aType == cType
+    if cUName != None:
+        result = result and aUName == cUName
+    if cText != None:
+        result = result and aText.startswith(cText)
+
+    return result
+
+def show(header, contains , positions = None):
+    result = u'{}'.format(header)
+    if contains != None:
+        for a in contains:
+            result = u'{}\n {}'.format(result, telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'))
+            if positions != None:
+                for i in positions:
+                    result = u'{} {} '.format(result, a[i])
+            else:
+                result = u'{} {} '.format(result, a[:])
+    return result
+
 
 def getWho():
     url = 'http://sugus.eii.us.es/en_sugus.html'
@@ -165,6 +166,54 @@ def getWho():
 
     return who_filtered
 
+def addTo(event, name):
+    c = conn.cursor()
+
+    date = datetime.now().strftime("%d-%m-%y")
+    c.execute('insert into eventTable values(?, ?, ?)', (date, event.replace(" ",""), name.replace(" ", "")))
+
+    conn.commit()
+
+    c.close()
+
+def findByEvent(event):
+    c = conn.cursor()
+
+    result = c.execute('select * from eventTable where event=?', (event.replace(" ",""),)).fetchall()
+
+    c.close()
+
+    return result
+
+def removeFromEvent(event, name):
+    c = conn.cursor()
+
+    c.execute('delete from eventTable where event=? and name=?', (event, name))
+
+    c.close()
+
+    return u'Has sido eliminado del evento {}'.join(event)
+
+def emptyEvent(event, name):
+    # Debe de estar en el evento ! !
+    c = conn.cursor()
+
+    if name in findByEvent(event):
+        c.execute('delete from eventTable where event=?', (event, name))
+        text = u'El evento {} ha sido eliminado'.join(event)
+    else:
+        text = u'El evento {} NO ha sido eliminado'.join(event)
+
+    c.close()
+
+    return text
+
+def listEvents():
+    c = conn.cursor()
+
+    h = c.execute('select distinct event from eventTable')
+
+    return h
+
 if __name__ == '__main__':
     main()
-             
