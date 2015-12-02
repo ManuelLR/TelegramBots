@@ -1,4 +1,5 @@
- #!/usr/bin/python
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import logging
 import urllib
@@ -17,8 +18,8 @@ from datetime import datetime
 TOKEN = None
 conn = sqlite3.connect('sugusBotDB.db')
 
-with open('token', 'r') as token_file:
-    TOKEN = token_file.readline().replace('\n', '')
+with open('token', 'rb') as token_file:
+    TOKEN = str(token_file.readline()).replace('\n', '')
 
 def secInit():
     c = conn.cursor()
@@ -42,7 +43,7 @@ def addTo(event, name):
 def findByEvent(event):
     c = conn.cursor()
 
-    result = c.execute('select * from exampleTable where event=?', (event.replace(" ",""),))
+    result = c.execute('select * from exampleTable where event=?', (event.replace(" ",""),)).fetchall()
 
     return result
 
@@ -87,10 +88,10 @@ def main():
         else:
             break
 
-    print("Discarded {} old updates".format(num_discarded))
+    #print("Discarded {} old updates".format(num_discarded))
 
     # Main loop
-    print("Working...")
+    print('Working...')
     while True:
         while True:
             try:
@@ -122,33 +123,32 @@ def main():
                     else:
                         who_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w) for w in who]
                         send_text = u"Miembros en SUGUS:\n{}".format('\n'.join(who_bonito))
-		if text.startswith('/join'):
-			rtext = text.replace('/join','').replace(' ','')
-			if not rtext:
-			    send_text = u"Dime el evento"
-			else:
-			    addTo(rtext, message.from_user.username)
+                if text.startswith('/join'):
+                    rtext = text.replace('/join','').replace(' ','')
+                    if not rtext:
+                        send_text = u"Dime el evento"
+                    else:
+                        addTo(rtext, message.from_user.username)
 
-		if text.startswith('/participants'):
-                        rtext = text.replace('/participants','').replace(' ','')
-                        if not rtext:
-			    #send_text = u"Dime el evento"
-			    events = listEvents()
-			    events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
-			    send_text = u"Elige una de las listas: \n{}".format('\n'.join(events_bonito))
-			else:
-			    event = rtext
-			    participants = findByEvent(event)
-			    print(participants.rowcount)
-			    if False:
-			        send_text = u"No hay nadie en {}".format(event)
-			    else:
-			        part_bonito = [u"{}{} - ({})".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[2], w[0]) for w in participants]
-			        send_text = u"Participantes en {}:\n{}".format(event, '\n'.join(part_bonito))
+            if text.startswith('/participants'):
+                rtext = text.replace('/participants','').replace(' ','')
+                if not rtext:
+                    events = listEvents()
+                    events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
+                    send_text = u"Elige una de las listas: \n{}".format('\n'.join(events_bonito))
+                else:
+                    event = rtext
+                    participants = findByEvent(event)
+                    print(participants.rowcount)
+                    if False:
+                        send_text = u"No hay nadie en {}".format(event)
+                    else:
+                        part_bonito = [u"{}{} - ({})".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[2], w[0]) for w in participants]
+                        send_text = u"Participantes en {}:\n{}".format(event, '\n'.join(part_bonito))
 
-                if send_text != None:
-                    bot.sendMessage(chat_id=chat_id, text=send_text)
-                    print(u"Mensaje enviado a {}/{} ({})".format(message.from_user.username, message.from_user.first_name, str(message.chat.id)))
+            if send_text != None:
+                bot.sendMessage(chat_id=chat_id, text=send_text)
+                print(u"Mensaje enviado a {}/{} ({})".format(message.from_user.username, message.from_user.first_name, str(message.chat.id)))
 
             LAST_UPDATE_ID = update_id + 1
 
