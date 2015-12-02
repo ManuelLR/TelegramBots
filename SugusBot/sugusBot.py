@@ -10,11 +10,59 @@ import string
 import codecs
 import sys
 
+import sqlite3
+from datetime import datetime
+
+
 TOKEN = None
+conn = sqlite3.connect('sugusBotDB.db')
+
 with open('token', 'r') as token_file:
     TOKEN = token_file.readline().replace('\n', '')
 
+def secInit():
+    c = conn.cursor()
+    
+    c.execute('''create table if not exists exampleTable (date text, event text, name text, UNIQUE(event, name) ON CONFLICT REPLACE)''')
+
+    conn.commit()
+
+    c.close()
+
+def addTo(event, name):
+    c = conn.cursor()
+
+    date = datetime.now().strftime("%d-%m-%y")
+    c.execute('''insert into exampleTable values(?, ?, ?)''', (date, event.replace(" ",""), name.replace(" ", "")))
+
+    conn.commit()
+
+    c.close()
+
+def findByEvent(event):
+    c = conn.cursor()
+
+    result = c.execute('select * from exampleTable where event=?', (event.replace(" ",""),))
+
+    return result
+
+def removeFromEvent(event, name):
+    return False
+
+def emptyEvent(event, name):
+    # Debe de estar en el evento ! !
+    return True
+
+def listEvents():
+    c = conn.cursor()
+
+    h = c.execute('select distinct event from exampleTable')
+
+    return h
+
 def main():
+
+    secInit()
 
     # UTF-8 console stuff thingies
     UTF8Writer = codecs.getwriter('utf8')
@@ -74,6 +122,29 @@ def main():
                     else:
                         who_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w) for w in who]
                         send_text = u"Miembros en SUGUS:\n{}".format('\n'.join(who_bonito))
+		if text.startswith('/join'):
+			rtext = text.replace('/join','').replace(' ','')
+			if not rtext:
+			    send_text = u"Dime el evento"
+			else:
+			    addTo(rtext, message.from_user.username)
+
+		if text.startswith('/participants'):
+                        rtext = text.replace('/participants','').replace(' ','')
+                        if not rtext:
+			    #send_text = u"Dime el evento"
+			    events = listEvents()
+			    events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
+			    send_text = u"Elige una de las listas: \n{}".format('\n'.join(events_bonito))
+			else:
+			    event = rtext
+			    participants = findByEvent(event)
+			    print(participants.rowcount)
+			    if False:
+			        send_text = u"No hay nadie en {}".format(event)
+			    else:
+			        part_bonito = [u"{}{} - ({})".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[2], w[0]) for w in participants]
+			        send_text = u"Participantes en {}:\n{}".format(event, '\n'.join(part_bonito))
 
                 if send_text != None:
                     bot.sendMessage(chat_id=chat_id, text=send_text)
