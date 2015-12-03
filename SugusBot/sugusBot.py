@@ -81,6 +81,7 @@ def main():
             actType = message.chat.type
             chat_id = message.chat.id
             update_id = update.update_id
+            actUser = message.from_user.username
 
             send_text = None
 
@@ -94,31 +95,31 @@ def main():
             if checkTypeAndTextStart(aText= actText, cText='/join', aType=actType, cType='private'):
                 rtext = actText.replace('/join','').replace(' ','')
                 if not rtext:
-                    send_text = u"Dime el evento"
+                    send_text = u"Elige un evento /participants"
                 else:
                     addTo(rtext, message.from_user.username)
 
             if checkTypeAndTextStart(aText= actText, cText='/participants', aType=actType, cType='private'):
                 rtext = actText.replace('/participants','').replace(' ','')
                 if not rtext:
-                    events = listEvents()
-                    events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
-                    send_text = u"Elige una de las listas: \n{}".format('\n'.join(events_bonito))
+                    #events = listEvents()
+                    #events_bonito = [u"{}{}".format(telegram.Emoji.SMALL_BLUE_DIAMOND.decode('utf-8'), w[0]) for w in events]
+                    #send_text = u"Elige una de las listas: \n{}".format('\n'.join(events_bonito))
+                    send_text = show(u"Elige una de las listas:", listEvents(), [0])
                 else:
-                    event = rtext
-                    participants = findByEvent(event)
+                    participants = findByEvent(rtext)
                     if len(participants) == 0:
-                        send_text = u"No hay nadie en {}".format(event)
+                        send_text = u"No hay nadie en {}".format(rtext)
                     else:
-                        send_text = show(u"Participantes en {}:".format(event), participants, [2, 0])
+                        send_text = show(u"Participantes en {}:".format(rtext), participants, [2, 0])
 
             if checkTypeAndTextStart(aText= actText, cText='/disjoin', aType=actType, cType='private'):
                 rtext = actText.replace('/disjoin','').replace(' ','')
-                send_text = removeFromEvent(rtext, message.from_user.username)
+                send_text = removeFromEvent(rtext, actUser)
 
             if checkTypeAndTextStart(aText= actText, cText='/empty', aType=actType, cType='private'):
                 rtext = actText.replace('/empty').replace(' ','')
-                send_text = emptyEvent(rtext, message.from_user.username)
+                send_text = emptyEvent(rtext, actUser)
 
             if send_text != None:
                 bot.sendMessage(chat_id=chat_id, text=send_text)
@@ -192,7 +193,7 @@ def removeFromEvent(event, name):
 
     c.close()
 
-    return u'Has sido eliminado del evento {}'.join(event)
+    return str(u'Has sido eliminado del evento '+ event)
 
 def emptyEvent(event, name):
     # Debe de estar en el evento ! !
