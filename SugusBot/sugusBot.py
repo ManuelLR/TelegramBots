@@ -87,10 +87,10 @@ def main():
                     send_text = show(u"Miembros en SUGUS:", who)
 
             if checkTypeAndTextStart(aText= actText, cText='/como', aType=actType, cType='private'):
-                send_text = addTo(u'comida', message.from_user.username)
+                send_text = addTo(u'comida', actUser)
 
             if checkTypeAndTextStart(aText= actText, cText='/nocomo', aType=actType, cType='private'):
-                send_text = removeFromEvent(u'comida', message.from_user.username)
+                send_text = removeFromEvent(u'comida', actUser)
 
             if checkTypeAndTextStart(aText= actText, cText='/quiencome', aType=actType, cType='private'):
                 if len(findByEvent('comida')) != 0:
@@ -103,7 +103,7 @@ def main():
                 if not rtext:
                     send_text = u"Elige un evento /testingparticipants"
                 else:
-                    addTo(rtext, message.from_user.username)
+                    addTo(rtext, actUser)
 
             if checkTypeAndTextStart(aText= actText, cText='/testingparticipants', aType=actType, cType='private'):
                 rtext = actText.replace('/testingparticipants','').replace(' ','')
