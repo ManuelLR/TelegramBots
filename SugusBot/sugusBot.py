@@ -179,6 +179,7 @@ def help():
     header = u"Elige una de las opciones: "
     contain = [['/help', 'Ayuda'], ['/who',u'¿Quien hay en Sugus?'], ['/como',u'Yo como aquí']]
     contain = contain + [['/nocomo',u'Yo no como aquí'], ['/quiencome', u'¿Quien come aquí?']]
+    contain = contain +[['/testinghelp', 'Ayuda testing']]
     return show(header, contain, [0,1])
 
 def helpTesting():
@@ -267,6 +268,8 @@ def removeFromEvent(event, name):
 
     c.execute('delete from eventTable where event=? and name=?', (event, name))
 
+    conn.commit()
+
     c.close()
 
     return str(u'Has sido eliminado del evento '+ event)
@@ -276,10 +279,11 @@ def emptyEvent(event, name):
     c = conn.cursor()
 
     if name in findByEvent(event):
-        c.execute('delete from eventTable where event=?', (event, name))
+        c.execute('delete from eventTable where event=?', (event))
         text = u'El evento {} ha sido eliminado'.join(event)
+        conn.commit()
     else:
-        text = u'El evento ' + event + 'NO ha sido eliminado'
+        text = u'El evento ' + event + ' NO ha sido eliminado'
 
     c.close()
 
