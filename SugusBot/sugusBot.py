@@ -266,7 +266,7 @@ def findByEvent(event):
 def removeFromEvent(event, name):
     c = conn.cursor()
 
-    c.execute('delete from eventTable where event=? and name=?', (event, name))
+    c.execute('delete from eventTable where event=? and name=?', (event, u'@' + name))
 
     conn.commit()
 
@@ -278,7 +278,7 @@ def emptyEvent(event, name):
     # Debe de estar en el evento ! !
     c = conn.cursor()
 
-    if name in findByEvent(event):
+    if u'@' + name in findByEvent(event):
         c.execute('delete from eventTable where event=?', (event))
         text = u'El evento {} ha sido eliminado'.join(event)
         conn.commit()
