@@ -27,18 +27,73 @@ with open('token', 'rb') as token_file:
 bot = telegram.Bot(TOKEN)
 
 
-#owe : deber 
 
-def secInit():
-    c = conn.cursor()
-    # expensesTable: paidBy (int), insertBy (id user), amount (double-money), description (text), datePayment (date), dateInsertion (date)
-    # userIdTable: idDeLaTabla--> idUser (int), username (text), privateCconversationID (int)
-    # relationTable: expenseID (int), percentInfluenced(double [0,1]), userReferenceID (int), UNIQUE(expenseID, userReferenceID)
-    # oweTable: from(Date [actualizado desde la fecha...]), until(Date [actualizado hasta la fecha...]), amount(Double), idUser(int), UNIQUE(from, until, idUser)
-    
 
-    conn.commit()
-    c.close()
+class dataBase():
+	
+    def __init__(self):
+        print("completar __init__ en class dataBase()")
+        self.conn = sqlite3.connect('payTogetherDB.db')
+
+    def __secInit(self):
+        c = conn.cursor()
+
+        # Toda la info para las consultas: https://sqlite.org/lang_createtable.html
+        # Probar las consultas: http://stackoverflow.com/questions/8272534/testing-sqlite-code-online
+
+        c.execute('CREATE TABLE IF NOT EXISTS userTable(userId INTEGER NOT NULL UNIQUE, userName TEXT NOT NULL, privateConversationID integer NOT NULL, owe REAL DEFAULT 0)')
+        # Siempre que se inserte o modifique algo en la expensesTable o en la relationTable se debe actualizar el campo "owe"
+
+        c.execute('CREATE TABLE IF NOT EXISTS expensesTable(id INTEGER PRIMARY KEY, paidBy INTEGER NOT NULL REFERENCES userTable(userId), insertBy integer NOT NULL REFERENCES userTable(userId), amount REAL DEFAULT 0, description TEXT, datePayment TEXT, dateInsertion TEXT NOT NULL)')
+
+
+        c.execute('CREATE TABLE IF NOT EXISTS relationTable(expenseID INTEGER NOT NULL REFERENCES expensesTable(id), userId INTEGER NOT NULL REFERENCES userTable(userId), percentInfluenced REAL DEFAULT 0,  PRIMARY KEY (expenseID, userId))')
+
+        conn.commit()
+        c.close()
+
+	
+    def __createUser(self, userId, userName, privateConversationID):
+        c = self.conn.cursor()
+        userName = "@" + userName
+
+        c.execute('INSERT INTO userTable (userId, userName, privateConversationID) VALUES(?, ?, ?)', (userId, userName, privateConversationID)
+        self.conn.commit()
+        c.close()
+	
+	def __createExpense(self, paidBy, insertBy, amount, description, datePayment):
+        c = conn.cursor()
+        dateInsertion = "Today"
+		
+        # Antes de insertar se debe comprobar que el paidBy y el insertBy existe en userTable
+
+		c.execute('INSERT INTO expensesTable (paidBy, insertBy, amount, description, datePayment, dateInsertion) VALUES(?, ?, ?, ?, ?, ?)', (paidBy, insertBy, amount, description, datePayment, dateInsertion)
+		
+		conn.commit()
+		c.close()
+	
+	def __createRelation(self, expenseID, userId, percentInfluenced):
+        c = conn.cursor()
+		
+        c.execute('INSERT INTO relationTable (expenseID, userId, percentInfluenced) VALUES(?, ?, ?)', (expenseID, userId, percentInfluenced)
+		
+		conn.commit()
+		c.close()
+		
+	def __getUserRow(self, userId):
+        c = conn.cursor()
+		
+        h = c.execute('SELECT * FROM userTable WHERE userId = ?', userId).fetchall()
+		
+        return h
+		
+    def __existUser(self, userId, userName):
+        user = self.__getUserRow(userId)
+        if len(user) != 0:
+            print("el método existUser debe comprobar si el nombre de usuario ha variado")
+			return True
+		else:
+			return False
 
 def main():
 
