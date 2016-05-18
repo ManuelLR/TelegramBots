@@ -180,6 +180,18 @@ class data_base():
         c.close()
         return relation
 
+    def getStatusFichasDeId(self, userId):
+        c = self.conn.cursor()
+        relation = c.execute('SELECT de.userName, f.total '
+                             'FROM fichasTable as f INNER JOIN userTable AS de '
+                             'ON de.userId == f.deId '
+                             'INNER JOIN userTable AS para '
+                             'ON para.userId == f.paraId '
+                             'WHERE f.paraId = "{userId}"'.format(userId=userId)).fetchall()
+
+        c.close()
+        return relation
+
 
     def getInfoByExpenseId(self, expenseId):
         c = self.conn.cursor()
@@ -445,7 +457,7 @@ def main():
 
             # print(pending_development())
 
-            if dBase.check_user(actUser , toSend) and (actUser.id == my_id or not onlySendToMe):
+            if dBase.check_user(actUser, toSend) and (actUser.id == my_id or not onlySendToMe):
 
                 if actUser.id != my_id and verboseMode:
                     my_text = "El usuario '" + str(actUser.id) + "' ha enviado un mensaje y tiene nombre de " \
@@ -453,7 +465,7 @@ def main():
                                 ":\n" + actText + "\nPuedes ejecutar /stop! para volverlo privado"
                     sendMessages(my_text, my_id)
 
-                elif regularCheck(message, inConv, cText='/cancel'):
+                if regularCheck(message, inConv, cText='/cancel'):
                     if inConv.status(actUser, chat_id):
                         inConv.empty(actUser, chat_id)
                     send_markup = telegram.ReplyKeyboardHide()
@@ -473,7 +485,9 @@ def main():
                     regularCheck(message, inConv, cText='/ficha', cUid=[luna_id])):
 
                     users = dBase.getUserNames()
-                    toSend.addMessages("¿Quien ha sido el campeón?",
+                    text = "¿Quien ha sido el campeón que te ha metido una ficha?"
+
+                    toSend.addMessages(text,
                                        send_markup=telegram.ReplyKeyboardMarkup(users, selective=True,
                                                                                 resize_keyboard=True),
                                        chat_id=chat_id)
@@ -482,15 +496,20 @@ def main():
 
                 elif regularCheck(message, inConv, cOption='/ficha', cOptValue='paraquien'):
 
-                    ret = dBase.addFicha(deUserName='@' + actUser.username, paraUserName= actText, puntos=1)
+                    ret = dBase.addFicha(paraUserName='@' + actUser.username, deUserName= actText, puntos=1)
                     toSend.addMessages("Recibido y... Felicidades !", send_markup=telegram.ReplyKeyboardHide())
 
                     inConv.empty(actUser, chat_id)
 
                 elif regularCheck(message, inConv, cText='/estado'):
-
-                    toSend.addMessages(
-                        showList("Estado de las fichas: ", dBase.getStatusFichas(), [0, 1, 2], [" -> ", " => ", ""]))
+                    if only_luna_can_fichas:
+                        toSend.addMessages(
+                            showList("Estado de las fichas hacia @Luna2395: ", dBase.getStatusFichasDeId(luna_id),
+                                     [0, 1], [" => ", ""]))
+                    else:
+                        toSend.addMessages(
+                            showList("Estado de las fichas: ", dBase.getStatusFichas(), [0, 1, 2],
+                                     [" -> ", " => ", ""]))
 
                 elif regularCheck(message, inConv, cText='/backupDB', cType='private', cUid=[my_id]):
                     if actUser.id == my_id:
@@ -517,7 +536,7 @@ def main():
                     except:
                         toSend.addMessages("No pude cambar el ID")
                     else:
-                        toSend.addMessages("Id cambiado")
+                        toSend.addMessages("Id cambiado a '" + str(id_luna) + "'")
 
                 elif regularCheck(message,inConv, cText='/lunaFichas', cUid=[my_id]):
                     toSend.addMessages("Cambiando la variable 'only_luna_can_fichas'")
@@ -525,6 +544,8 @@ def main():
                     config['Admin']['only_luna_can_fichas'] = str(only_luna_can_fichas)
                     with open(file_name, 'w') as configfile:
                         config.write(configfile)
+
+                    toSend.addMessages("Nuevo valor: " + str(only_luna_can_fichas))
 
                 elif regularCheck(message,inConv, cText='/stop!', cUid=[my_id]):
                     toSend.addMessages("Solo te contestaré a ti hasta que uses /start!")
@@ -587,12 +608,12 @@ def regularCheck(message, inConv, cText=None, cType=None, cUName=[], cUid=[], cO
         result = result and actType == cType
 
     if cUName != []:
-        if actUser.username in cUName:
-            result = result and True
+        if actUser.username not in cUName:
+            result = False
 
     if cUid != []:
-        if actUser.id in cUid:
-            result = result and True
+        if actUser.id not in cUid:
+            result = False
 
     if cText != None:
         result = result and actText.startswith(cText)
