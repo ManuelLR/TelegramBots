@@ -602,6 +602,9 @@ def main():
             elif onlySendToMe:
                 toSend.addMessages("Este bot actualmente solo contesta al administrador")
 
+            elif actUser.id in spammer:
+                toSend.addMessages("Eres un #spammer y estas bloqueado.\n Tu id es: " + str(actUser.id))
+
             else:
                 send_text = "Debes tener un nombre de usuario o alias para usar este bot"
                 send_text += "\nPara ello debes acceder a la configuración de tu aplicación de Telegram " \
