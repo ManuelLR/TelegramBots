@@ -575,7 +575,7 @@ def main():
                 elif regularCheck(message, inConv, cOption='/sqlInjection', cOptValue='inject', cUid=[my_id]):
                     res = dBase.query_database(actText)
                     inConv.empty(actUser,chat_id)
-                    toSend.addMessages("Resultado de la query: " + res)
+                    toSend.addMessages("Resultado de la query: " + str(res))
 
                 elif regularCheck(message,inConv, cText='/stop!', cUid=[my_id]):
                     toSend.addMessages("Solo te contestaré a ti hasta que uses /start!")
