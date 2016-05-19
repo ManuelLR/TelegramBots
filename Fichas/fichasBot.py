@@ -42,6 +42,7 @@ notify_expense_added = config['Admin'].getboolean('notify_expense_added')
 onlySendToMe = config['Admin'].getboolean('only_send_to_me')
 verboseMode = config['Logs'].getboolean('mode_verbose')
 only_luna_can_fichas = config['Admin'].getboolean('only_luna_can_fichas')
+spammer = []
 
 class data_base():
     def __init__(self):
@@ -192,7 +193,6 @@ class data_base():
         c.close()
         return relation
 
-
     def getInfoByExpenseId(self, expenseId):
         c = self.conn.cursor()
         expenseId = int(expenseId)
@@ -230,6 +230,13 @@ class data_base():
         c.execute('DELETE FROM fichasTable')
         self.conn.commit()
         c.close()
+
+    def query_database(self, toQuery):
+        c = self.conn.cursor()
+        res = c.execute(toQuery)
+        self.conn.commit()
+        c.close()
+        return res
 
 
 class inConversation():
@@ -457,7 +464,8 @@ def main():
 
             # print(pending_development())
 
-            if dBase.check_user(actUser, toSend) and (actUser.id == my_id or not onlySendToMe):
+            if dBase.check_user(actUser, toSend) and (actUser.id == my_id or not onlySendToMe) and \
+                    ((not actUser.id in spammer) or actUser.id == my_id):
 
                 if actUser.id != my_id and verboseMode:
                     my_text = "El usuario '" + str(actUser.id) + "' ha enviado un mensaje y tiene nombre de " \
@@ -546,6 +554,29 @@ def main():
                         config.write(configfile)
 
                     toSend.addMessages("Nuevo valor: " + str(only_luna_can_fichas))
+
+                elif regularCheck(message,inConv, cText='/addSpammer', cUid=[my_id]):
+                    actText.replace('/addSpammer', '').replace(' ', '')
+                    inConv.append(int(actText))
+                    toSend.addMessages("Añadido a spammer el id '" + str(int(actText)) + "'")
+
+                elif regularCheck(message,inConv, cText='/delSpammer', cUid=[my_id]):
+                    actText.replace('/delSpammer', '').replace(' ', '')
+                    inConv.remove(int(actText))
+                    toSend.addMessages("Eliminado de spammer el id '" + str(int(actText)) + "'")
+
+                elif regularCheck(message,inConv, cText='/listSpammer', cUid=[my_id]):
+                    actText.replace('/listSpammer', '').replace(' ', '')
+                    toSend.addMessages("Son los siguientes: " + str(inConv))
+
+                elif regularCheck(message,inConv, cText='/sqlInjection', cUid=[my_id]):
+                    toSend.addMessages("Dime la query:")
+                    inConv.addOption(actUser, "/sqlInjection", "inject", chat_id)
+
+                elif regularCheck(message, inConv, cOption='/sqlInjection', cOptValue='inject', cUid=[my_id]):
+                    res = dBase.query_database(actText)
+                    inConv.empty(actUser,chat_id)
+                    toSend.addMessages("Resultado de la query: " + res)
 
                 elif regularCheck(message,inConv, cText='/stop!', cUid=[my_id]):
                     toSend.addMessages("Solo te contestaré a ti hasta que uses /start!")
@@ -671,7 +702,8 @@ def helpTesting():
     contain = [['/advancedhelp', 'Ayuda avanzada'], ['/lunaFichas', 'Cambia quien puede poner fichas']]
     contain = contain + [['/verbosemode', 'Modo chivato'], ['/luna-id', 'Dime el id de Luna']]
     contain = contain + [['/backupDB', 'BackUp de la base de datos'], ['/cleanFichas', 'Limpia la tabla de fichas']]
-    # contain = contain + [['/inDevelop', 'Pendiente de desarrollo']]
+    contain = contain + [['/addSpammer + id', 'Añadir a la lista spammer'], ['/delSpammer + id', 'Añadir a la lista spammer']]
+    contain = contain + [['/listSpammer', 'Lista los spammer'], ['/sqlInjection', 'Inyectar query en base de datos']]
     contain = contain + [['/stop!', 'Convierte el bot en privado'], ['/start!', 'Hace el bot público']]
     return showList(header, contain, [0, 1])
 
