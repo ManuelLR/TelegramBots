@@ -557,17 +557,17 @@ def main():
 
                 elif regularCheck(message,inConv, cText='/addSpammer', cUid=[my_id]):
                     actText.replace('/addSpammer', '').replace(' ', '')
-                    inConv.append(int(actText))
+                    spammer.append(int(actText))
                     toSend.addMessages("Añadido a spammer el id '" + str(int(actText)) + "'")
 
                 elif regularCheck(message,inConv, cText='/delSpammer', cUid=[my_id]):
                     actText.replace('/delSpammer', '').replace(' ', '')
-                    inConv.remove(int(actText))
+                    spammer.remove(int(actText))
                     toSend.addMessages("Eliminado de spammer el id '" + str(int(actText)) + "'")
 
                 elif regularCheck(message,inConv, cText='/listSpammer', cUid=[my_id]):
                     actText.replace('/listSpammer', '').replace(' ', '')
-                    toSend.addMessages("Son los siguientes: " + str(inConv))
+                    toSend.addMessages("Son los siguientes: " + str(spammer))
 
                 elif regularCheck(message,inConv, cText='/sqlInjection', cUid=[my_id]):
                     toSend.addMessages("Dime la query:")
