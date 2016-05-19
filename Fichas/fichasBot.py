@@ -556,17 +556,16 @@ def main():
                     toSend.addMessages("Nuevo valor: " + str(only_luna_can_fichas))
 
                 elif regularCheck(message,inConv, cText='/addSpammer', cUid=[my_id]):
-                    actText.replace('/addSpammer', '').replace(' ', '')
+                    actText = actText.replace('/addSpammer', '').replace(' ', '')
                     spammer.append(int(actText))
                     toSend.addMessages("Añadido a spammer el id '" + str(int(actText)) + "'")
 
                 elif regularCheck(message,inConv, cText='/delSpammer', cUid=[my_id]):
-                    actText.replace('/delSpammer', '').replace(' ', '')
+                    actText = actText.replace('/delSpammer', '').replace(' ', '')
                     spammer.remove(int(actText))
                     toSend.addMessages("Eliminado de spammer el id '" + str(int(actText)) + "'")
 
                 elif regularCheck(message,inConv, cText='/listSpammer', cUid=[my_id]):
-                    actText.replace('/listSpammer', '').replace(' ', '')
                     toSend.addMessages("Son los siguientes: " + str(spammer))
 
                 elif regularCheck(message,inConv, cText='/sqlInjection', cUid=[my_id]):
