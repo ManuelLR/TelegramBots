@@ -691,7 +691,8 @@ def main():
                 toSend.addMessages("Este bot actualmente solo contesta al administrador")
 
             elif actUser.id in spammer:
-                toSend.addMessages("Eres un #spammer y estas bloqueado.\n Tu id es: " + str(actUser.id))
+                toSend.addMessages("Eres un #spammer y estas bloqueado.\n Tu id es: " + str(actUser.id),
+                                   chat_id=actUser.id, is_reply=False)
 
             else:
                 send_text = "Debes tener un nombre de usuario o alias para usar este bot"
