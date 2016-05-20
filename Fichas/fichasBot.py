@@ -37,6 +37,7 @@ bot = telegram.Bot(config['Bot']['TOKEN'])
 TOKEN = config['Bot']['TOKEN']
 my_id = int(config['Admin']['my_id'])
 luna_id = int(config['Admin']['luna_id'])
+group_id = int(config['Admin']['group_id'])
 dbName = config['DataBase']['file_name']
 notify_expense_added = config['Admin'].getboolean('notify_expense_added')
 onlySendToMe = config['Admin'].getboolean('only_send_to_me')
@@ -63,6 +64,11 @@ class data_base():
                   'paraId integer NOT NULL REFERENCES userTable(userId), '
                   'total INTEGER DEFAULT 0, '
                   'UNIQUE (deId, paraId))')
+
+        c.execute('CREATE TABLE IF NOT EXISTS ghostTable(id INTEGER PRIMARY KEY, '
+                  'userId integer NOT NULL REFERENCES userTable(userId), '
+                  'total INTEGER DEFAULT 0, '
+                  'UNIQUE (userId))')
 
         self.conn.commit()
         # self.__toSend = None
@@ -121,6 +127,36 @@ class data_base():
         c.close()
         return number
 
+    def addGhost(self, userName, puntos):
+        try:
+            deId = self.__getUserByUsername(userName)[0][0]
+            expenseID = self.__addGhost(deId, puntos)
+
+        except:
+            print('Errors in addGhost: ' + str(sys.exc_info()[0]))
+            return False
+        else:
+            return expenseID
+
+    def __addGhost(self, deId, number):
+        c = self.conn.cursor()
+
+        total = c.execute('SELECT total FROM ghostTable WHERE userId = "{deId}"'.format(
+            deId=deId)).fetchone()
+        # print("Consulta h: " + str(h))
+
+        if total is not None:
+            number += total[0]
+            print("Fantasma en db: " + str(total[0]) + ";")
+
+        print("Fantasma a insertar en db: " + str(number) + " " + str(deId))
+        h = c.execute('INSERT OR REPLACE INTO ghostTable (userId, total) '
+                          'VALUES(?, ?)', (deId, number))
+
+        self.conn.commit()
+        c.close()
+        return number
+
 
     def __createUser(self, userId, userName):
         c = self.conn.cursor()
@@ -169,6 +205,14 @@ class data_base():
         c.close()
         return h
 
+
+    def getStatusFantasmas(self):
+        c = self.conn.cursor()
+        relation = c.execute('SELECT de.userName, f.total '
+                             'FROM ghostTable as f INNER JOIN userTable AS de '
+                             'ON de.userId == f.userId ').fetchall()
+        c.close()
+        return relation
 
     def getStatusFichas(self):
         c = self.conn.cursor()
@@ -350,7 +394,7 @@ class send():
 
         for a in self.__messages:
             if a[0] is self.chat_id or notify_expense_added:
-                self.__sendMessage(chat_id=a[0], send_text=a[1], send_markup=a[2], parse_mode=a[3])
+                self.__sendMessage(chat_id=a[0], send_text=a[1], send_markup=a[2], parse_mode=a[3], is_reply=a[4])
         self.__messages.clear()
 
     def __sendDocument(self, chat_id, data, filename):
@@ -439,6 +483,7 @@ def main():
     onlySendToMe = config['Admin'].getboolean('only_send_to_me')
     verboseMode = config['Logs'].getboolean('mode_verbose')
     only_luna_can_fichas = config['Admin'].getboolean('only_luna_can_fichas')
+    group_id = int(config['Admin']['group_id'])
 
     # Main loop
     print('Working...')
@@ -492,24 +537,55 @@ def main():
                 elif ((regularCheck(message, inConv, cText='/ficha') and not only_luna_can_fichas) or
                     regularCheck(message, inConv, cText='/ficha', cUid=[luna_id])):
 
+                    if (message.chat.type == 'group'):
+                        toSend.addMessages("Por privado")
+
                     users = dBase.getUserNames()
                     text = "¿Quien ha sido el campeón que te ha metido una ficha?"
 
                     toSend.addMessages(text,
                                        send_markup=telegram.ReplyKeyboardMarkup(users, selective=True,
                                                                                 resize_keyboard=True),
-                                       chat_id=chat_id)
+                                       chat_id=actUser.id, is_reply=False)
 
-                    inConv.addOption(actUser, "/ficha", "paraquien", chat_id)
+                    inConv.addOption(actUser, "/ficha", "paraquien", conversationId=actUser.id)
 
-                elif regularCheck(message, inConv, cOption='/ficha', cOptValue='paraquien'):
+                elif regularCheck(message, inConv, cOption='/ficha', cOptValue='paraquien', cType='private'):
 
                     ret = dBase.addFicha(paraUserName='@' + actUser.username, deUserName= actText, puntos=1)
-                    toSend.addMessages("Recibido y... Felicidades !", send_markup=telegram.ReplyKeyboardHide())
+                    toSend.addMessages("Recibido !", send_markup=telegram.ReplyKeyboardHide())
 
+                    toSend.addMessages(actText + " le ha tirado una ficha a @" + actUser.username,
+                                       send_markup=telegram.ReplyKeyboardHide(), chat_id=group_id, is_reply=False)
                     inConv.empty(actUser, chat_id)
 
-                elif regularCheck(message, inConv, cText='/estado'):
+                elif regularCheck(message, inConv, cText='/fantasma'):
+                    if message.chat.type == 'group':
+                        toSend.addMessages("Por privado")
+                    toSend.addMessages("Dime quien es el fantasma",
+                                       send_markup=telegram.ReplyKeyboardMarkup(dBase.getUserNames(), selective=True,
+                                                                                resize_keyboard=True),
+                                       chat_id=actUser.id, is_reply=False)
+                    inConv.addOption(actUser, "/fantasma", "paraquien", conversationId=actUser.id)
+
+                elif regularCheck(message, inConv, cOption='/fantasma', cOptValue='paraquien', cType='private'):
+
+                    if actText.replace(" ", "") != "@" + actUser.username:
+                        dBase.addGhost(userName=actText, puntos=1)
+                        toSend.addMessages("Fantasma recibido ! ", send_markup=telegram.ReplyKeyboardHide())
+                        toSend.addMessages("@" + actUser.username + " ha añadido un fantasma para " + actText ,
+                                       send_markup=telegram.ReplyKeyboardHide(), chat_id=group_id, is_reply=False)
+                        inConv.empty(actUser, chat_id)
+                    else:
+                        toSend.addMessages(" ?¿ ")
+
+                elif regularCheck(message, inConv, cText='/rkfantasma'):
+                    toSend.addMessages(
+                            showList("Estado Fantasmas: ", dBase.getStatusFantasmas(),
+                                     [0, 1], [" => ", ""]))
+
+
+                elif regularCheck(message, inConv, cText='/rkfichas'):
                     if only_luna_can_fichas:
                         toSend.addMessages(
                             showList("Estado de las fichas hacia @Luna2395: ", dBase.getStatusFichasDeId(luna_id),
@@ -545,6 +621,18 @@ def main():
                         toSend.addMessages("No pude cambar el ID")
                     else:
                         toSend.addMessages("Id cambiado a '" + str(id_luna) + "'")
+
+                elif regularCheck(message, inConv, cText='/groupId', cUid=[my_id]):
+#                    inConv.empty(actUser, chat_id)
+                    try:
+                        group_id = int(actText.replace('/groupId', '').replace(' ', ''))
+                        config['Admin']['group_id'] = str(group_id)
+                        with open(file_name, 'w') as configfile:
+                            config.write(configfile)
+                    except:
+                        toSend.addMessages("No pude cambar el ID")
+                    else:
+                        toSend.addMessages("Id cambiado a '" + str(group_id) + "'")
 
                 elif regularCheck(message,inConv, cText='/lunaFichas', cUid=[my_id]):
                     toSend.addMessages("Cambiando la variable 'only_luna_can_fichas'")
@@ -693,7 +781,8 @@ def showList(header, contains, positions=None, separation=None):
 
 def help():
     header = "Elige una de las opciones: "
-    contain = [['/help', 'Ayuda'], ['/estado', 'Estado de fichas'], ['/ficha', 'Añadir fichas']]
+    contain = [['/help', 'Ayuda'], ['/rkfichas', 'Estado de fichas'], ['/ficha', 'Añadir fichas']]
+    contain = contain + [['/rkfantasmas', 'Estado de fantasmas'], ['/fantasma', 'Añadir fantasma']]
     contain = contain + [['/cancel', 'Cancela la sesión actual'], ['/me', 'Mi información']]
     contain = contain + [['/advancedhelp', 'Ayuda avanzada']]
     return showList(header, contain, [0, 1])
