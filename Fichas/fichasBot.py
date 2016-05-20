@@ -582,7 +582,7 @@ def main():
                 elif regularCheck(message, inConv, cText='/rkfantasma'):
                     toSend.addMessages(
                             showList("Estado Fantasmas: ", dBase.getStatusFantasmas(),
-                                     [0, 1], [" => ", ""]))
+                                     [0, 1], [" => ", "" + telegram.Emoji.GHOST]))
 
 
                 elif regularCheck(message, inConv, cText='/rkfichas'):
