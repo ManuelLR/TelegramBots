@@ -210,7 +210,8 @@ class data_base():
         c = self.conn.cursor()
         relation = c.execute('SELECT de.userName, f.total '
                              'FROM ghostTable as f INNER JOIN userTable AS de '
-                             'ON de.userId == f.userId ').fetchall()
+                             'ON de.userId == f.userId '
+                             'ORDER BY f.total DESC').fetchall()
         c.close()
         return relation
 
@@ -220,7 +221,8 @@ class data_base():
                              'FROM fichasTable as f INNER JOIN userTable AS de '
                              'ON de.userId == f.deId '
                              'INNER JOIN userTable AS para '
-                             'ON para.userId == f.paraId').fetchall()
+                             'ON para.userId == f.paraId'
+                             'ORDER BY f.total DESC').fetchall()
 
         c.close()
         return relation
