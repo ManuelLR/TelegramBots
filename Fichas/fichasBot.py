@@ -221,7 +221,7 @@ class data_base():
                              'FROM fichasTable as f INNER JOIN userTable AS de '
                              'ON de.userId == f.deId '
                              'INNER JOIN userTable AS para '
-                             'ON para.userId == f.paraId'
+                             'ON para.userId == f.paraId '
                              'ORDER BY f.total DESC').fetchall()
 
         c.close()
